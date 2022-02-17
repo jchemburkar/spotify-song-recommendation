@@ -3,6 +3,8 @@ Spotify playlist recs are almost exclusively of artists currently in the playlis
 
 ## how to run
 
+For starters, you will need a spotify developer account! Directions can be found [here](https://developer.spotify.com/documentation/web-api/quick-start/). When you have a developer account, you will want to add it to the client in the [utils file](utils.py)
+
 To build the image needed to run the environment, use:
 ``` make build ```
 
