@@ -1,1 +1,4 @@
+marshmallow==3.14.1
+pandas==1.4.1
 requests==2.27.1
+typing==3.7.4.3
