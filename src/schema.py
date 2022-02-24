@@ -14,7 +14,7 @@ class TrackSchema(Schema):
     def predump_track(self, data, **kwargs):
         """ flatten out artists """
         artist_names = [artist["name"] for artist in data["artists"]]
-        data["artists"] = ",".join(artist_names)
+        data["artists"] = ", ".join(artist_names)
         return data
     
     @post_dump
