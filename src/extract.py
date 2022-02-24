@@ -1,7 +1,8 @@
 """ file for extracting data from api """
-from client import Client
 from typing import List, Dict, Optional
 import pandas as pd
+from client import Client
+from constants import FEATURES
 from schema import TrackSchema
 from utils import split_list_n_sized_chunks
 

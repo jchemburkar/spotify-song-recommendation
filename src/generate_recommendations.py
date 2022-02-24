@@ -2,13 +2,17 @@
 import argparse
 import pandas as pd
 from typing import Set
+from constants import FEATURES
 from extract import (
+    get_multiple_tracks,
     get_playlist_data,
     get_multiple_tracks,
     get_artists_similar_artists,
     get_artists_top_tracks,
     get_tracks_audio_features
 )
+from schema import TrackSchema
+from sklearn.metrics.pairwise import cosine_similarity
 
 SAMPLE_PLAYLIST = "3capEdrsV9FqJRYlLXrqsF"  # the commute!
 SAMPLE_ALBUM = "1XGGeqLZxjOMdCJhmamIn8"  # FM, Vince Staples
@@ -31,7 +35,7 @@ def _get_playlist_similar_artists(playlist_data: pd.DataFrame) -> Set[str]:
                 for similar_artist in similar_artists["artists"]:
                     artist_set.add(similar_artist["id"])
             artist_set.add(artist["id"])
-    
+
     print(f"Found {len(artist_set)} artist ids")
     return artist_set
 
@@ -47,8 +51,29 @@ def get_similar_artists_top_tracks(playlist_data: pd.DataFrame) -> pd.DataFrame:
             top_tracks.add(track["id"])
 
     print(f"Found {len(top_tracks)} tracks")
-    audio_features = get_tracks_audio_features(list(top_tracks))
+    top_tracks = list(top_tracks)
+    audio_features = pd.DataFrame(get_tracks_audio_features(top_tracks))
+    metadata = pd.DataFrame([TrackSchema().dump(track) for track in get_multiple_tracks(top_tracks)])
+    similar_track_df = pd.merge(metadata, audio_features, how="inner", on="id").reindex(metadata.index)
+    return similar_track_df
+
+
+#############
+# Transform #
+#############
+
+def normalize_audio_features(audio_features: pd.DataFrame) -> pd.DataFrame:
+    """ normalize columns of audio features """
+    for col in ['loudness', 'tempo', 'popularity']:
+        num = audio_features[col] - audio_features[col].min()
+        denom = audio_features[col].max() - audio_features[col].min()
+        audio_features[col] = num / denom
     return audio_features
+
+
+def vectorize_dataframe(audio_features: pd.DataFrame) -> pd.Series:
+    """ flatten list of audio features into one vector """
+    return audio_features[FEATURES].mean(axis=0)
 
 
 ######################
@@ -57,8 +82,18 @@ def get_similar_artists_top_tracks(playlist_data: pd.DataFrame) -> pd.DataFrame:
 
 def generate_playlist_recommendations(playlist_id: str) -> None:
     """ given the playlist id, pull in relevant data and generate recommendations """
+    # extract data
     playlist_data = get_playlist_data(playlist_id)
-    get_similar_artists_top_tracks(playlist_data)
+    similar_artists_top_tracks = get_similar_artists_top_tracks(playlist_data)
+
+    # normalize data
+    playlist_data = normalize_audio_features(playlist_data)
+    similar_artists_top_tracks = normalize_audio_features(similar_artists_top_tracks)
+
+    # apply similarities
+    playlist_vector = vectorize_dataframe(playlist_data)
+    similar_artists_top_tracks["similarity"] = cosine_similarity(similar_artists_top_tracks[FEATURES], playlist_vector.values.reshape(1, -1))
+    return similar_artists_top_tracks.sort_values(by="similarity", ascending=False)
 
 
 ########
@@ -75,7 +110,13 @@ def get_args() -> argparse.Namespace:
 def main():
     """ main func """
     args = get_args()
-    generate_playlist_recommendations(args.playlist_id)
+    recommendations = generate_playlist_recommendations(args.playlist_id)
+    recommendations.to_csv("recommendation_data.csv")
+    for index, row in enumerate(recommendations[:10].T.to_dict().values(), start=1):
+        print(f"{index}. {row['song_name']} by {row['artists']}, uri: {row['uri']}")
+
+    print("")
+    print("All data can be found in recommendation_data.csv in the root folder!")
 
 
 if __name__ == "__main__":

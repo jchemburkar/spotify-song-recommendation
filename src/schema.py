@@ -6,6 +6,7 @@ class TrackSchema(Schema):
     """ handles a raw track node """
     artists = fields.Str()
     id = fields.Str()
+    popularity = fields.Float()
     release_date = fields.Str(attribute="album.release_date")
     song_name = fields.Str(attribute="name")
 
