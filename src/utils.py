@@ -1,5 +1,6 @@
 """ generic utils """
 from typing import List
+import pandas as pd
 
 def split_list_n_sized_chunks(data: List, chunk_size: int) -> List[List]:
     """ takes a list and splits it into chunks of size n """
